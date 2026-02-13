@@ -1,25 +1,26 @@
 import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:ai_based_farmer_query_app/services/rag_service.dart';
 
 class VoiceSearchService {
   late stt.SpeechToText _speechToText;
   bool _isListening = false;
   String _recognizedText = '';
+  final RAGService ragService;
 
-  VoiceSearchService() {
+  VoiceSearchService({required this.ragService}) {
     _speechToText = stt.SpeechToText();
   }
 
-  Future<void> initializeSpeechToText() async {
+  Future<bool> initializeSpeechToText() async {
     try {
       bool available = await _speechToText.initialize(
         onError: (error) => print('Error: $error'),
         onStatus: (status) => print('Status: $status'),
       );
-      if (!available) {
-        print('Speech to Text not available');
-      }
+      return available;
     } catch (e) {
       print('Error initializing speech to text: $e');
+      return false;
     }
   }
 
@@ -37,6 +38,9 @@ class VoiceSearchService {
                 onRecognitionResult(_recognizedText);
               }
             },
+            localeId: 'en_IN', // Indian English
+            listenFor: const Duration(seconds: 15),
+            pauseFor: const Duration(seconds: 3),
           );
         }
       } catch (e) {
@@ -62,5 +66,31 @@ class VoiceSearchService {
 
   void clearRecognizedText() {
     _recognizedText = '';
+  }
+
+  Future<List<Map<String, dynamic>>> searchByVoice(String query) async {
+    try {
+      return await ragService.search(query);
+    } catch (e) {
+      return [
+        {
+          'title': 'Voice Search Error',
+          'content': 'Unable to process voice search: $e',
+          'category': 'Error',
+          'score': 0.0,
+        }
+      ];
+    }
+  }
+
+  List<String> getVoiceCommands() {
+    return [
+      'How to treat crop diseases?',
+      'Best pest control methods',
+      'Soil management tips',
+      'Fertilization guidelines',
+      'Irrigation scheduling',
+      'Crop rotation benefits',
+    ];
   }
 }
